@@ -12,7 +12,7 @@ osu_version = 202005191
 
 API_KEY = 'c53979a6645be9d759d0bfee2184a37e8d72a901'
 API_URL = 'https://osu.ppy.sh/api/{}'
-REQ_SCORE_LIST = 'C:/Users/phoen/AppData/Local/osu!/Songs'
+REQ_SCORE_LIST = 'C:/Users/<uwu>/AppData/Local/osu!/Songs'
 
 def parseScore(s : Dict[str, str]):
     score = Score()
