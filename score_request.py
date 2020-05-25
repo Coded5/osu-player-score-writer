@@ -1,11 +1,13 @@
 import requests
 import time
+import sys
+import hashlib
+
 from typing import Dict
 from score import Score
 from parse_scores import pack_scores
 
-test_beatmap_id = 1071754
-test_player_name = 'Coded5'
+delay = 0.3
 osu_version = 202005191
 
 API_KEY = 'c53979a6645be9d759d0bfee2184a37e8d72a901'
@@ -28,45 +30,40 @@ def parseScore(s : Dict[str, str]):
     score.perfect_combo   = s['perfect'] == '1'
     score.mods            = int(s['enabled_mods'])
     score.online_score_id = int(s['score_id'])
-    score.replay_md5      = '098f6bcd4621d373cade4e832627b4f6'
+    score.replay_md5      = ''
     return score
 
-def get_player_score(beatmap_ids: list, name: str):
+def get_player_score(beatmap_ids: Dict[int, str], players: list):
+    print("[ScoreRequest] Preparing requests parameters")
     scores = {}
-    for id in beatmap_ids:
-        p = {'b' : id, 'u' : name}
-        h = {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        } 
-
-        score_data = requests.get(API_URL.format('get_scores?k={}'.format(API_KEY)), headers=h, params=p)
-        time.sleep(0.5)
-        if len(score_data.json()) == 0:
-            continue
-        beatmap_data = requests.get(API_URL.format('get_beatmaps?k={}&{}'.format(API_KEY, 'b={}'.format(id)), headers=h))
-        time.sleep(0.5)
-        scores[beatmap_data.json()[0]['file_md5']] = [parseScore(score_data.json()[0])]
-    pack_scores(scores, osu_version, "test_02.db")
-
-
-def requestScore():
-    beatmap_id = 764517
-    p = {
-        'b' : beatmap_id,
-        'u' : test_player_name
-    }
-
     h = {
         "Accept": "application/json",
         "Content-Type": "application/json"
     } 
 
-    score_data = requests.get(API_URL.format('get_scores?k={}'.format(API_KEY)), headers=h, params=p)
-    beatmap_data = requests.get(API_URL.format('get_beatmaps?k={}&{}'.format(API_KEY, 'b={}'.format(beatmap_id)), headers=h))
-    print(beatmap_data.json()[0])
-    print(parseScore(score_data.json()[0]).toJSON())
-    scores = {beatmap_data.json()[0]['file_md5'] : [parseScore(score_data.json()[0])]}
-    pack_scores(scores, osu_version, "test_02.db")
+    print("[ScoreRequest] Player count : {}".format(len(players)))
+    print("[ScoreRequest] Beatmap count : {}".format(len(beatmap_ids)))
 
-requestScore()
+    request_count = len(players) * len(beatmap_ids)
+    print("[ScoreRequest] Request count : {}".format(request_count))
+    print("[ScoreRequest] Starting requests...")
+    progress = 0
+    found_score = 0
+    req = 0
+    for player in players:
+        for i in beatmap_ids:
+            p = {'b' : i, 'u' : player}
+
+            score_data = requests.get(API_URL.format('get_scores?k={}'.format(API_KEY)), headers=h, params=p)
+            time.sleep(delay)
+            req += 1
+
+            progress = (req / request_count) * 100
+            sys.stdout.write("Requesting progress: %d%% [%d/%d, Found(%s) : %d]  \r" % (progress, req, request_count, player, found_score) )
+            sys.stdout.flush()
+            if len(score_data.json()) == 0:
+                continue
+            found_score += 1
+            scores[beatmap_ids[i]] = [parseScore(score_data.json()[0])]
+            
+    return scores
